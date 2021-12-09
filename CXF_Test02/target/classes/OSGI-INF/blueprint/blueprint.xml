@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<blueprint xmlns="http://www.osgi.org/xmlns/blueprint/v1.0.0"
+    xmlns:cxf="http://camel.apache.org/schema/blueprint/cxf"
+    xmlns:prop="http://camel.apache.org/schema/placeholder"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.osgi.org/xmlns/blueprint/v1.0.0/blueprint.xsd       http://camel.apache.org/schema/blueprint  http://camel.apache.org/schema/blueprint/camel-blueprint.xsd">
+    <cxf:rsServer address="http://localhost:33441/MW02" id="wsLocation" serviceClass="com.btech.test.ws.TestService02">
+        <cxf:providers>
+            <ref component-id="cors-filter"/>
+            <bean class="com.fasterxml.jackson.jaxrs.json.JacksonJsonProvider"/>
+        </cxf:providers>
+    </cxf:rsServer>
+    <camelContext id="Minicash_CXF_Test02_Context" xmlns="http://camel.apache.org/schema/blueprint">
+        <route id="CXF_Test02Service_Route">
+            <from id="_rfwsLocation" uri="cxfrs:bean:wsLocation?bindingStyle=SimpleConsumer&amp;synchronous=true"/>
+            <transform id="_transform1">
+                <constant>Test02 OK</constant>
+            </transform>
+            <log id="_log1" message="Test02 OK"/>
+        </route>
+    </camelContext>
+    <bean class="com.btech.test.providers.CORSFilter" id="cors-filter"/>
+</blueprint>

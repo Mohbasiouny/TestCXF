@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<blueprint xmlns="http://www.osgi.org/xmlns/blueprint/v1.0.0"
+    xmlns:cxf="http://camel.apache.org/schema/blueprint/cxf" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+    <bean class="org.apache.activemq.camel.component.ActiveMQComponent" id="activemq">
+        <property name="connectionFactory">
+            <bean class="org.apache.activemq.ActiveMQConnectionFactory">
+                <property name="brokerURL" value="tcp://localhost:61616"/>
+                <property name="userName" value="Fuse_Service"/>
+                <property name="password" value="QAZxsw123"/>
+            </bean>
+        </property>
+    </bean>
+    <bean class="com.btech.einvoice.providers.CORSFilter" id="cors-filter"/>
+    <cxf:rsServer address="{{MW_HOST}}:{{TaxAuthority_PORT}}/MW"
+        id="wsLocation" serviceClass="com.btech.einvoice.ws.PostTaxService">
+        <cxf:providers>
+            <ref component-id="cors-filter"/>
+            <bean class="com.fasterxml.jackson.jaxrs.json.JacksonJsonProvider"/>
+        </cxf:providers>
+    </cxf:rsServer>
+    <camelContext id="Einvoice_TaxAuthority_Context"
+        typeConverterExists="Ignore" xmlns="http://camel.apache.org/schema/blueprint">
+        <propertyPlaceholder id="properties" location="file:${env:FUSE_HOME}/etc/Einvoice.properties"/>
+        <route autoStartup="true" id="TaxAuthority_Service" trace="true">
+            <from id="_rfwsLocation" uri="cxfrs:bean:wsLocation?bindingStyle=SimpleConsumer&amp;synchronous=true"/>
+            <log id="LogMessage1" message="Received Einvoice"/>
+            <to id="_toPostTax1" uri="activemq:Einvoice_SignDocument?priority=6&amp;errorHandlerLoggingLevel=OFF&amp;exchangePattern=InOut&amp;synchronous=true"/>
+        </route>
+        <route id="Einvoice_SignDocument">
+            <from id="_fromSignedDocumentQueue" uri="activemq:Einvoice_SignDocument?concurrentConsumers=100&amp;replyToConcurrentConsumers=100&amp;synchronous=true"/>
+            <log id="LogMessage2" message="After Calling Einvoice_SignDocument"/>
+            <to id="TaxAuthorityQueue1" uri="activemq:Einvoice_TaxAuthority?priority=6&amp;errorHandlerLoggingLevel=OFF&amp;exchangePattern=InOut&amp;synchronous=true"/>
+        </route>
+        <route id="Einvoice_TaxAuthority">
+            <from id="TaxAuthorityQueue2" uri="activemq:Einvoice_TaxAuthority?concurrentConsumers=100&amp;replyToConcurrentConsumers=100&amp;synchronous=true"/>
+            <log id="LogMessage4" message="After Calling Einvoice_TaxAuthority"/>
+            <to id="GetDocumentQueue" uri="activemq:Einvoice_GetDocument?exchangePattern=InOnly"/>
+            <to id="UpdateFailureResponseQueue" uri="activemq:Einvoice_UpdateFailureResponse?exchangePattern=InOnly"/>
+        </route>
+    </camelContext>
+</blueprint>
